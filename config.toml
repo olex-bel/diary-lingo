@@ -1,0 +1,12 @@
+[app]
+window_geometry = "800x600"
+font_family = "Arial"
+font_size_main = 12
+font_size_ui = 8
+
+[llm]
+provider = "ollama"
+temperature = 0.7
+
+[data]
+entries_path = "./data/entries"

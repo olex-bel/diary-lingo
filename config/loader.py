@@ -13,8 +13,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "font_size_ui": 10,
     },
     "llm": {
-        "provider": "ollama",
-        "model": "ethanwebb/OpenEuroLLM-Slovak-FIX",
+        "provider": "",
+        "model": "",
+        "temperature": 0.7,
+    },
+    "translator": {
+        "provider": "",
+        "model": "",
         "temperature": 0.7,
     },
 }

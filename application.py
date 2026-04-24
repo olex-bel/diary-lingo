@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import font
 from typing import Any
 from queue import Queue, Empty
-from text.analyzer import TextAnalyzer, MessageType, Message
+from text import TextProcessor, Message, MessageType, create_text_analyzer, create_text_translator
 from ui import TextView, StatusBar, TextEditor, FileList
 from core.file_service import FileService
 
@@ -18,8 +18,9 @@ class Application(tk.Tk):
         self.file_service = FileService(config['data']["entries_path"])
         self._configure_window()
         self._setup_ui()
-        self.analyzer_queue: Queue[Message] = Queue()
-        self.analyzer = TextAnalyzer(self.analyzer_queue, config=config)
+        self.message_queue: Queue[Message] = Queue()
+        self.analyzer = create_text_analyzer(self.message_queue, config=config["llm"])
+        self.translator = create_text_translator(self.message_queue, config=config["translator"])
  
         
     def _configure_window(self) -> None:
@@ -71,8 +72,9 @@ class Application(tk.Tk):
         edit_menu.add_command(label="Select All", command=self.editor.select_all, accelerator="Ctrl+A")
 
         llm_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label="LLM", menu=llm_menu)
+        menu_bar.add_cascade(label="Actions", menu=llm_menu)
         llm_menu.add_command(label="Analyze", command=self.on_analyze_click, accelerator="Ctrl+Enter")
+        llm_menu.add_command(label="Translate", command=self.on_translate_click, accelerator="Ctrl+T")
 
     def _setup_ui(self) -> None:
         self.status_bar = StatusBar(self, padx=10)
@@ -98,16 +100,27 @@ class Application(tk.Tk):
     def on_file_selected(self, filename: str) -> None:
         self.editor.open_file(filename)
         
-    def on_analyze_click(self) -> None:
-        user_input = self.editor.get_content().strip()
+    def _run_llm_task(self, processor: TextProcessor, task_name: str) -> None:
+        if self.analyzer.is_running or self.translator.is_running:
+            self.status_bar.set_status(f"Please wait, another task is in progress...")
+            return
 
+        user_input = self.editor.get_content().strip()
         if not user_input:
+            self.status_bar.set_status("Text is empty.")
             return
 
         self.viewer.clear_text()
+        self.viewer.append_text(f"--- {task_name} ---\n")
         self._set_input_state(False)
 
-        self.analyzer.start(user_input)
+        processor.start(user_input)
+
+    def on_analyze_click(self) -> None:
+        self._run_llm_task(self.analyzer, "Analysis")
+
+    def on_translate_click(self) -> None:
+        self._run_llm_task(self.translator, "Translation")
     
     def _handle_message(self, message: Message) -> None:
         match message.type:
@@ -126,7 +139,7 @@ class Application(tk.Tk):
     def _process_queue(self) -> None:
         try:
             while True:
-                message = self.analyzer_queue.get_nowait()
+                message = self.message_queue.get_nowait()
                 self._handle_message(message)
         except Empty:
             pass

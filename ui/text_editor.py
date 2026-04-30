@@ -52,11 +52,19 @@ class TextEditor(tk.Frame):
         return "break"
 
     def paste(self):
-        self.text_widget.event_generate("<<Paste>>")
+        try:
+            if self.text_widget.tag_ranges(tk.SEL):
+                self.text_widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            
+            self.text_widget.event_generate("<<Paste>>")
+        except tk.TclError:
+            pass
         return "break"
 
     def select_all(self):
         self.text_widget.tag_add(tk.SEL, 1.0, tk.END)
+        self.text_widget.mark_set(tk.INSERT, tk.END)
+        self.text_widget.see(tk.INSERT)
         return "break"
 
     def set_state(self, state: Literal["normal", "disabled"]) -> None:
